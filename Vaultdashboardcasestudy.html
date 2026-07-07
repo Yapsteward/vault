@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>How I Built My Personalized Vault &amp; Ledger — Case Study</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#1B2A4A; --navy-deep:#101B33; --navy-soft:#22345B;
+    --gold:#C9A227; --gold-soft:#E4C558; --cream:#FAF6EC;
+    --ink:#E8ECF4; --muted:#8A94A8; --line:#2C3D63;
+    --ok:#4CAF7D; --warn:#E4B34A; --bad:#E06B5D;
+    --btn-ink:#101B33;
+    --radius:12px;
+    --body:'Inter',system-ui,sans-serif;
+    --display:'Playfair Display',serif;
+    --mono:'IBM Plex Mono',monospace;
+  }
+  html[data-theme="light"]{
+    --navy:#FFFFFF; --navy-deep:#FAF3E1; --navy-soft:#F3E7C9;
+    --gold:#C9A227; --gold-soft:#A9821E; --cream:#1B2A4A;
+    --ink:#2B2B2B; --muted:#7A7264; --line:#E5D9B6;
+    --ok:#2E8B57; --warn:#B8860B; --bad:#C0392B;
+    --btn-ink:#101B33;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--navy-deep);color:var(--ink);font-family:var(--body);line-height:1.5;transition:background .2s,color .2s}
+  a{color:var(--gold-soft)}
+  ::selection{background:var(--gold);color:var(--btn-ink)}
+
+  /* ---------- floating top bar ---------- */
+  header{position:fixed;top:0;left:0;right:0;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;z-index:50;background:linear-gradient(var(--navy-deep),transparent);pointer-events:none}
+  header *{pointer-events:auto}
+  .brand{display:flex;align-items:baseline;gap:9px}
+  .brand b{font-family:var(--display);font-weight:700;font-size:15px;color:var(--cream)}
+  .brand span{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+  .head-actions{display:flex;align-items:center;gap:10px}
+  .back-link{font-size:12px;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:6px;background:var(--navy);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+  .back-link:hover{color:var(--gold-soft);border-color:var(--gold)}
+  button{font-family:var(--body);cursor:pointer}
+  .icon-btn{background:var(--navy);border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:9px;display:flex;align-items:center;justify-content:center}
+  .icon-btn:hover{color:var(--cream);border-color:var(--gold)}
+  .icon-btn svg{width:15px;height:15px;display:block}
+  #themeToggle .icon-moon{display:none}
+  html[data-theme="light"] #themeToggle .icon-sun{display:none}
+  html[data-theme="light"] #themeToggle .icon-moon{display:block}
+
+  /* ---------- slide deck ---------- */
+  .deck{scroll-snap-type:y mandatory;overflow-y:auto;height:100vh}
+  .slide{scroll-snap-align:start;scroll-snap-stop:always;min-height:100vh;width:100%;display:flex;flex-direction:column;justify-content:center;padding:80px 8vw 56px;position:relative;border-bottom:1px solid var(--line)}
+  .slide:nth-child(even){background:var(--navy)}
+  .slide-inner{max-width:1180px;margin:0 auto;width:100%}
+  .slide-num{position:absolute;right:8vw;bottom:22px;font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.05em}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin-bottom:20px}
+  h1{font-family:var(--display);font-weight:700;font-size:clamp(34px,5.4vw,64px);line-height:1.08;color:var(--cream);max-width:15ch;letter-spacing:.2px}
+  h2{font-family:var(--display);font-weight:600;font-size:clamp(24px,3vw,36px);color:var(--cream);letter-spacing:.2px;margin-bottom:22px}
+  .dek{font-size:clamp(15px,1.6vw,19px);color:var(--muted);max-width:56ch;margin-top:22px;line-height:1.55}
+  .lede{font-size:clamp(16px,1.8vw,20px);color:var(--ink);max-width:64ch;margin-bottom:8px}
+
+  /* ---------- title slide meta / stats ---------- */
+  .meta-row{display:flex;gap:26px;flex-wrap:wrap;margin-top:36px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .meta-row b{color:var(--ink);font-weight:600}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-top:44px}
+  .stat{background:var(--navy-deep);padding:18px 16px}
+  .stat .n{font-family:var(--mono);font-size:clamp(20px,2.4vw,28px);font-weight:600;color:var(--gold-soft);line-height:1}
+  .stat .l{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.3}
+
+  /* ---------- two-column bullet grid ---------- */
+  .cols2{display:grid;grid-template-columns:1fr 1fr;gap:16px 48px;margin-top:8px}
+  .col-block h3{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:14px}
+  ul.list{list-style:none;display:grid;gap:14px}
+  ul.list li{position:relative;padding-left:22px;color:var(--ink);font-size:15px;max-width:52ch}
+  ul.list li::before{content:"";position:absolute;left:0;top:8px;width:7px;height:7px;border-radius:50%;background:var(--gold)}
+  ul.list li b{color:var(--cream)}
+
+  /* ---------- approach step grid ---------- */
+  .step-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:8px}
+  .step{background:var(--navy-deep);border:1px solid var(--line);border-radius:10px;padding:16px 16px 14px}
+  .step .s-n{font-family:var(--mono);font-size:11px;color:var(--gold-soft);border:1px solid var(--line);border-radius:5px;padding:2px 7px;display:inline-block;margin-bottom:10px}
+  .step b{display:block;color:var(--cream);font-size:14.5px;margin-bottom:5px}
+  .step p{font-size:12.5px;color:var(--muted);line-height:1.45}
+
+  /* ---------- solution split ---------- */
+  .split{display:grid;grid-template-columns:1.1fr 1fr;gap:52px;align-items:center}
+  .split p{font-size:15.5px;color:var(--ink);line-height:1.6;margin-bottom:14px}
+  code, .inline-code{font-family:var(--mono);font-size:.88em;background:rgba(0,0,0,.3);padding:2px 7px;border-radius:5px;color:var(--gold-soft)}
+  html[data-theme="light"] code, html[data-theme="light"] .inline-code{background:rgba(0,0,0,.06)}
+
+  .preview{background:var(--navy-deep);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:0 24px 60px -24px rgba(0,0,0,.55)}
+  .preview .chrome{background:var(--navy-soft);padding:9px 12px;display:flex;gap:6px;border-bottom:1px solid var(--line)}
+  .preview .dot{width:9px;height:9px;border-radius:50%;background:var(--line)}
+  .preview .body{padding:18px}
+  .preview .kpis-mini{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+  .preview .kpi-mini{background:var(--navy);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  .preview .kpi-mini .l{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .preview .kpi-mini .v{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--gold-soft);margin-top:4px}
+  .preview .row-mini{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:11px}
+  .preview .row-mini:first-of-type{border-top:none;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:9.5px}
+  .preview .chip-mini{display:inline-block;border-radius:5px;padding:1px 6px;font-size:9.5px;background:rgba(76,175,125,.16);color:var(--ok)}
+  .preview .chip-mini.warn{background:rgba(228,179,74,.16);color:var(--warn)}
+  .cap{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:10px;text-align:right}
+
+  /* ---------- CTA slide ---------- */
+  .cta-slide{align-items:center;text-align:center}
+  .cta-slide .slide-inner{max-width:600px}
+  .cta-slide p{max-width:48ch;margin:0 auto 26px;color:var(--muted);font-size:15.5px}
+  .btn{display:inline-flex;align-items:center;gap:8px;background:var(--gold);color:var(--btn-ink);border:none;border-radius:8px;padding:14px 28px;font-weight:600;font-size:14.5px;text-decoration:none}
+  .btn:hover{background:var(--gold-soft)}
+  .sign{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:26px}
+
+  /* ---------- slide nav dots ---------- */
+  .dots{position:fixed;right:18px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:9px;z-index:50}
+  .dots a{width:7px;height:7px;border-radius:50%;background:var(--line);display:block;transition:background .15s,transform .15s}
+  .dots a.active{background:var(--gold);transform:scale(1.4)}
+
+  @media(max-width:860px){
+    .cols2{grid-template-columns:1fr}
+    .step-grid{grid-template-columns:1fr 1fr}
+    .split{grid-template-columns:1fr;gap:28px}
+    .dots{display:none}
+  }
+  @media(max-width:600px){
+    .slide{padding:76px 6vw 44px}
+    .stats{grid-template-columns:1fr 1fr}
+    .step-grid{grid-template-columns:1fr 1fr}
+    .preview .kpis-mini{grid-template-columns:1fr 1fr}
+    .preview .row-mini{grid-template-columns:2fr 1fr 1fr;font-size:10px}
+    .preview .row-mini>:nth-child(4){display:none}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <b>TechPartners Systems</b>
+    <span>Case Study</span>
+  </div>
+  <div class="head-actions">
+    <a class="back-link" href="vault-dashboard.html">&larr; Vault &amp; Ledger</a>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle light/dark theme" aria-pressed="false">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </div>
+</header>
+
+<nav class="dots" id="dots">
+  <a href="#s1" data-i="0" aria-label="Slide 1"></a>
+  <a href="#s2" data-i="1" aria-label="Slide 2"></a>
+  <a href="#s3" data-i="2" aria-label="Slide 3"></a>
+  <a href="#s4" data-i="3" aria-label="Slide 4"></a>
+  <a href="#s5" data-i="4" aria-label="Slide 5"></a>
+  <a href="#s6" data-i="5" aria-label="Slide 6"></a>
+  <a href="#s7" data-i="6" aria-label="Slide 7"></a>
+  <a href="#s8" data-i="7" aria-label="Slide 8"></a>
+  <a href="#s9" data-i="8" aria-label="Slide 9"></a>
+</nav>
+
+<div class="deck" id="deck">
+
+  <!-- 1 — TITLE -->
+  <section class="slide" id="s1">
+    <div class="slide-inner">
+      <div class="eyebrow">Case Study · Internal Tools</div>
+      <h1>How I Built My Personalized Vault &amp; Ledger</h1>
+      <p class="dek">Two linked dashboards, one Google Sheet, and a single Apps Script deployment — replacing scattered notes-app passwords and forgotten subscription due dates with a system I fully own.</p>
+      <div class="meta-row">
+        <span><b>Role</b> · Builder</span>
+        <span><b>Stack</b> · HTML / CSS / JS + Google Apps Script</span>
+        <span><b>Data layer</b> · Google Sheets</span>
+        <span><b>Hosting cost</b> · ₱0/month</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="n">2</div><div class="l">linked dashboards, one shared backend</div></div>
+        <div class="stat"><div class="n">1</div><div class="l">Apps Script deployment serving both tabs</div></div>
+        <div class="stat"><div class="n">11</div><div class="l">account categories tracked</div></div>
+        <div class="stat"><div class="n">₱0</div><div class="l">monthly cost, no vendor lock-in</div></div>
+      </div>
+    </div>
+    <div class="slide-num">01 / 09</div>
+  </section>
+
+  <!-- 2 — OVERVIEW -->
+  <section class="slide" id="s2">
+    <div class="slide-inner">
+      <h2>Overview</h2>
+      <p class="lede">A self-hosted, two-dashboard system for tracking my own passwords, accounts, and recurring subscriptions — built so I could keep control over my own sensitive data without paying for another SaaS tool.</p>
+      <div class="cols2" style="margin-top:36px">
+        <div class="col-block">
+          <h3>Subscription Vault</h3>
+          <ul class="list">
+            <li>Monthly / yearly spend, tracked live</li>
+            <li>Plans, amounts, and next due dates</li>
+            <li>30-day payment horizon at a glance</li>
+          </ul>
+        </div>
+        <div class="col-block">
+          <h3>Email Vault</h3>
+          <ul class="list">
+            <li>Platform, username, recovery email</li>
+            <li>Masked password hints and PINs</li>
+            <li>Account age and category, at a glance</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="slide-num">02 / 09</div>
+  </section>
+
+  <!-- 3 — THE CHALLENGE -->
+  <section class="slide" id="s3">
+    <div class="slide-inner">
+      <h2>The Challenge</h2>
+      <p class="lede" style="margin-bottom:28px">Account and billing information lived in three different places, none of them built for the job.</p>
+      <div class="cols2">
+        <ul class="list">
+          <li>Password hints and PINs scattered across a notes app — no structure, no search.</li>
+          <li>No single view of what's due this week — subscriptions got missed or paid late.</li>
+          <li>No visibility into weak or reused passwords, or how old they were.</li>
+        </ul>
+        <ul class="list">
+          <li>Client, relatives', and personal logins all mixed together with no way to filter.</li>
+          <li>Paid password managers exist, but mean handing sensitive data to another company's server, for a monthly fee.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="slide-num">03 / 09</div>
+  </section>
+
+  <!-- 4 — THE GOAL -->
+  <section class="slide" id="s4">
+    <div class="slide-inner">
+      <h2>The Goal</h2>
+      <p class="lede" style="margin-bottom:28px">Build something narrow enough to actually use daily, on tools already in hand.</p>
+      <div class="cols2">
+        <ul class="list">
+          <li><b>Own the data</b> — store it in a spreadsheet, not a third-party vault.</li>
+          <li><b>Zero recurring cost</b> — no subscription to track subscriptions with.</li>
+          <li><b>Two jobs, two views</b> — money and login security shouldn't share one table.</li>
+        </ul>
+        <ul class="list">
+          <li><b>Usable on a phone</b>, not just a desktop dashboard.</li>
+          <li><b>A light gate on the door</b> — not enterprise auth, just enough to stop casual access.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="slide-num">04 / 09</div>
+  </section>
+
+  <!-- 5 — MY APPROACH -->
+  <section class="slide" id="s5">
+    <div class="slide-inner">
+      <h2>My Approach</h2>
+      <p class="lede" style="margin-bottom:24px">Built iteratively, in the order the real gaps showed up.</p>
+      <div class="step-grid">
+        <div class="step"><span class="s-n">01</span><b>Sheets as the database</b><p>No hosting, no migrations — a spreadsheet tab as source of truth, editable from a phone.</p></div>
+        <div class="step"><span class="s-n">02</span><b>Apps Script as the API</b><p>Code.gs reads a tab, returns JSON over a token-gated endpoint. No server to maintain.</p></div>
+        <div class="step"><span class="s-n">03</span><b>Subscription Vault first</b><p>KPI cards, a 30-day payment horizon, and a filterable table of every paid account.</p></div>
+        <div class="step"><span class="s-n">04</span><b>Split, not widened</b><p>Login/security data became its own dashboard, sharing one backend via a query param.</p></div>
+        <div class="step"><span class="s-n">05</span><b>Cross-linked both</b><p>One button in each header — two files living as one product.</p></div>
+        <div class="step"><span class="s-n">06</span><b>Trimmed what didn't earn its place</b><p>2FA and Strength dropped; Source Link, PIN, Account Age got promoted.</p></div>
+        <div class="step"><span class="s-n">07</span><b>Theming and login gate, last</b><p>Polish and access control layered onto a working core, not baked in first.</p></div>
+      </div>
+    </div>
+    <div class="slide-num">05 / 09</div>
+  </section>
+
+  <!-- 6 — THE SOLUTION -->
+  <section class="slide" id="s6">
+    <div class="slide-inner">
+      <h2>The Solution</h2>
+      <div class="split">
+        <div>
+          <p>A pure static HTML/CSS/JS front end — no framework, no build step — talking to one Apps Script Web App that branches on a query parameter to serve either sheet tab.</p>
+          <p>Sensitive fields stay masked behind an eye-toggle by default. Every computed figure — password age, account age, days until due — is calculated client-side from raw dates on load, so numbers are correct the moment the page opens.</p>
+        </div>
+        <div>
+          <div class="preview">
+            <div class="chrome"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+            <div class="body">
+              <div class="kpis-mini">
+                <div class="kpi-mini"><div class="l">Monthly Spend</div><div class="v">₱5,140</div></div>
+                <div class="kpi-mini"><div class="l">Overdue</div><div class="v">1</div></div>
+                <div class="kpi-mini"><div class="l">Due in 7d</div><div class="v">2</div></div>
+                <div class="kpi-mini"><div class="l">Total Accounts</div><div class="v">34</div></div>
+              </div>
+              <div class="row-mini"><span>Account</span><span>Plan</span><span>Due</span><span>Status</span></div>
+              <div class="row-mini"><span>Firm Email</span><span>Monthly</span><span>Jul 20</span><span class="chip-mini">Paid</span></div>
+              <div class="row-mini"><span>Domain Renewal</span><span>Yearly</span><span>Jul 10</span><span class="chip-mini warn">Due soon</span></div>
+            </div>
+          </div>
+          <div class="cap">Illustrative reconstruction — not a live data feed.</div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-num">06 / 09</div>
+  </section>
+
+  <!-- 7 — THE RESULTS -->
+  <section class="slide" id="s7">
+    <div class="slide-inner">
+      <h2>The Results</h2>
+      <ul class="list" style="max-width:70ch;gap:18px">
+        <li>Two working dashboards, cross-linked, sharing one backend and one login gate.</li>
+        <li>Every password and subscription account previously spread across notes and memory now lives in one filterable, searchable place.</li>
+        <li>Recurring payments visible a full 30 days out, with overdue and due-soon states surfaced automatically instead of discovered late.</li>
+        <li>Zero added monthly cost — the entire system runs on tools already paid for, plus free static hosting.</li>
+        <li>Fully responsive — usable on a phone during an actual bill-paying session, not just at a desk.</li>
+      </ul>
+    </div>
+    <div class="slide-num">07 / 09</div>
+  </section>
+
+  <!-- 8 — KEY TAKEAWAYS -->
+  <section class="slide" id="s8">
+    <div class="slide-inner">
+      <h2>Key Takeaways</h2>
+      <div class="cols2">
+        <ul class="list">
+          <li><b>One table trying to do two jobs does neither well.</b> Splitting billing from security made both easier to scan.</li>
+          <li><b>Let real usage trim the feature list.</b> Fields that looked useful on paper got cut; ones that seemed minor turned out to matter most.</li>
+          <li><b>One backend, multiple front ends</b> beats duplicating infrastructure — one query param routed two dashboards through one deployment.</li>
+        </ul>
+        <ul class="list">
+          <li><b>Compute, don't store, anything derived from a date.</b> Password age and days-to-due are calculated on load, never stale.</li>
+          <li><b>You don't need a framework to build something real.</b> Static HTML/CSS/JS, shipped as single files, was enough for a daily-use tool.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="slide-num">08 / 09</div>
+  </section>
+
+  <!-- 9 — CTA -->
+  <section class="slide cta-slide" id="s9">
+    <div class="slide-inner">
+      <h2>Want results like this?</h2>
+      <p>If your business is running on scattered notes, spreadsheets, and sticky notes instead of a system, that's exactly the kind of internal tool TechPartners Systems builds — funnels, CRM architecture, and custom dashboards like this one.</p>
+      <a class="btn" href="mailto:joyceannyap8@gmail.com">Let's build yours &rarr;</a>
+      <div class="sign">TechPartners Systems — Joyce Ann Gonzales Yap · City of Santiago, Isabela</div>
+    </div>
+    <div class="slide-num">09 / 09</div>
+  </section>
+
+</div>
+
+<script>
+const themeBtn = document.getElementById("themeToggle");
+function applyTheme(mode){
+  document.documentElement.setAttribute("data-theme", mode);
+  themeBtn.setAttribute("aria-pressed", String(mode === "light"));
+  localStorage.setItem("vault-theme", mode);
+}
+applyTheme(localStorage.getItem("vault-theme") === "light" ? "light" : "dark");
+themeBtn.addEventListener("click", ()=>{
+  applyTheme(document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light");
+});
+
+/* ---------- slide dot indicator ---------- */
+const dots = [...document.querySelectorAll("#dots a")];
+const slides = [...document.querySelectorAll(".slide")];
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if (e.isIntersecting){
+      const i = slides.indexOf(e.target);
+      dots.forEach(d=>d.classList.remove("active"));
+      if (dots[i]) dots[i].classList.add("active");
+    }
+  });
+}, { root: document.getElementById("deck"), threshold: 0.5 });
+slides.forEach(s=>io.observe(s));
+</script>
+</body>
+</html>

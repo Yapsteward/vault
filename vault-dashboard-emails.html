@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Vault &amp; Ledger — Password &amp; Account Directory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#1B2A4A; --navy-deep:#101B33; --navy-soft:#22345B;
+    --gold:#C9A227; --gold-soft:#E4C558; --cream:#FAF6EC;
+    --ink:#E8ECF4; --muted:#8A94A8; --line:#2C3D63;
+    --ok:#4CAF7D; --warn:#E4B34A; --bad:#E06B5D;
+    --btn-ink:#101B33;
+    --radius:12px;
+    --body:'Inter',system-ui,sans-serif;
+    --display:'Playfair Display',serif;
+    --mono:'IBM Plex Mono',monospace;
+  }
+  html[data-theme="light"]{
+    --navy:#FFFFFF; --navy-deep:#FAF3E1; --navy-soft:#F3E7C9;
+    --gold:#C9A227; --gold-soft:#A9821E; --cream:#1B2A4A;
+    --ink:#2B2B2B; --muted:#7A7264; --line:#E5D9B6;
+    --ok:#2E8B57; --warn:#B8860B; --bad:#C0392B;
+    --btn-ink:#101B33;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--navy-deep);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.5;min-height:100vh;transition:background .2s,color .2s}
+  a{color:var(--gold-soft)}
+
+  /* ---------- header ---------- */
+  header{background:var(--navy);border-bottom:1px solid var(--line);padding:20px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .wordmark{display:flex;align-items:baseline;gap:12px}
+  .wordmark h1{font-family:var(--display);font-weight:700;font-size:24px;color:var(--cream);letter-spacing:.3px}
+  .wordmark h1 em{font-style:normal;color:var(--gold)}
+  .wordmark span{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+  .head-actions{display:flex;align-items:center;gap:10px}
+  .stamp{font-family:var(--mono);font-size:11px;color:var(--muted)}
+  button{font-family:var(--body);cursor:pointer}
+  .btn{background:var(--gold);color:var(--btn-ink);border:none;border-radius:8px;padding:9px 16px;font-weight:600;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;cursor:pointer}
+  .btn:hover{background:var(--gold-soft)}
+  .btn:focus-visible,.icon-btn:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  .icon-btn svg{width:15px;height:15px;vertical-align:-3px;display:block}
+  #themeToggle{display:flex;align-items:center;justify-content:center;padding:9px}
+  #themeToggle .icon-moon{display:none}
+  html[data-theme="light"] #themeToggle .icon-sun{display:none}
+  html[data-theme="light"] #themeToggle .icon-moon{display:block}
+
+  main{max-width:1240px;margin:0 auto;padding:26px 28px 60px}
+
+  /* ---------- notices ---------- */
+  .notice{border-radius:var(--radius);padding:14px 18px;margin-bottom:22px;font-size:13px}
+  .notice.error{background:#3A1B17;border:1px solid #7A3A32;color:#F3C4BC}
+  .notice code{font-family:var(--mono);background:rgba(0,0,0,.3);padding:1px 6px;border-radius:4px}
+  html[data-theme="light"] .notice.error{background:#FBE1DD;border-color:#D99A90;color:#6B241A}
+  html[data-theme="light"] .notice code{background:rgba(0,0,0,.06)}
+  .hidden{display:none !important}
+
+  /* ---------- section headings ---------- */
+  .section-head{display:flex;align-items:baseline;gap:14px;margin:34px 0 16px}
+  .section-head h2{font-family:var(--display);font-size:21px;color:var(--cream);font-weight:600}
+  .section-head .rule{flex:1;height:1px;background:linear-gradient(90deg,var(--gold) 0,var(--line) 60%,transparent)}
+  .section-head .count{font-family:var(--mono);font-size:12px;color:var(--muted)}
+
+  /* ---------- KPI cards ---------- */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+  .kpi{background:var(--navy);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px 14px;position:relative;overflow:hidden}
+  .kpi::before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--gold);opacity:.85}
+  .kpi.bad::before{background:var(--bad)} .kpi.warn::before{background:var(--warn)} .kpi.ok::before{background:var(--ok)}
+  .kpi .label{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .kpi .value{font-family:var(--mono);font-size:26px;font-weight:600;color:var(--cream);line-height:1.1}
+  .kpi .value small{font-size:13px;color:var(--muted);font-weight:400}
+  .kpi .sub{font-size:11.5px;color:var(--muted);margin-top:5px}
+  .kpi.bad .value{color:var(--bad)} .kpi.warn .value{color:var(--warn)} .kpi.ok .value{color:var(--ok)}
+
+  /* ---------- vault filters ---------- */
+  .filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .filters input,.filters select{background:var(--navy);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:9px 12px;font-size:13px;font-family:var(--body)}
+  .filters input{flex:1;min-width:200px}
+  .filters select{max-width:280px}
+  .icon-btn{background:var(--navy);border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:9px 12px;font-size:13px}
+  .icon-btn:hover{color:var(--cream);border-color:var(--gold)}
+
+  /* ---------- vault table ---------- */
+  .table-wrap{background:var(--navy);border:1px solid var(--line);border-radius:var(--radius);overflow:auto}
+  table{width:100%;border-collapse:collapse;min-width:1080px}
+  thead th{position:sticky;top:0;background:var(--navy-soft);color:var(--muted);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+  tbody td{padding:11px 14px;border-bottom:1px solid rgba(44,61,99,.5);vertical-align:top;font-size:13px}
+  tbody tr:hover{background:rgba(201,162,39,.04)}
+  td .svc{font-weight:600;color:var(--cream)}
+  td .cat{font-size:11px;color:var(--muted);margin-top:2px}
+  td .usr{font-family:var(--mono);font-size:12px;color:var(--ink)}
+  .mono{font-family:var(--mono);font-size:12.5px}
+  .chip{display:inline-block;border-radius:6px;padding:2px 8px;font-size:11.5px;font-weight:500;white-space:nowrap}
+  .chip.ok{background:rgba(76,175,125,.14);color:var(--ok)}
+  .chip.warn{background:rgba(228,179,74,.14);color:var(--warn)}
+  .chip.bad{background:rgba(224,107,93,.14);color:var(--bad)}
+  .chip.mut{background:rgba(138,148,168,.14);color:var(--muted)}
+  .chip.gold{background:rgba(201,162,39,.14);color:var(--gold-soft)}
+  .hint-cell{display:flex;align-items:center;gap:8px}
+  .hint-cell .val{font-family:var(--mono);font-size:12px;letter-spacing:1px}
+  .eye{background:none;border:none;color:var(--muted);font-size:14px;padding:2px}
+  .eye:hover{color:var(--gold-soft)}
+  .empty,.loading{padding:44px;text-align:center;color:var(--muted)}
+  .spin{display:inline-block;width:18px;height:18px;border:2px solid var(--line);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-4px;margin-right:10px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.spin{animation:none}html{scroll-behavior:auto}}
+
+  footer{max-width:1240px;margin:0 auto;padding:0 28px 40px;color:var(--muted);font-size:11.5px}
+  footer b{color:var(--gold-soft)}
+  @media(max-width:760px){
+    .kpis{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  }
+  @media(max-width:640px){
+    header{padding:14px 16px}
+    .head-actions{width:100%;justify-content:space-between}
+    main{padding:16px 14px 40px}
+    .wordmark h1{font-size:19px}
+    .section-head{margin:26px 0 12px;flex-wrap:wrap}
+    .section-head h2{font-size:18px}
+    .kpis{grid-template-columns:1fr 1fr;gap:8px}
+    .kpi{padding:12px 14px 11px}
+    .kpi .value{font-size:21px}
+    .filters{flex-direction:column}
+    .filters input,.filters select{width:100%;max-width:none;min-width:0}
+    .icon-btn#clearBtn{width:100%}
+    footer{font-size:11px}
+  }
+  @media(max-width:420px){
+    .kpis{grid-template-columns:1fr}
+    .wordmark{flex-direction:column;align-items:flex-start;gap:4px}
+    .head-actions{gap:8px}
+    .stamp{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wordmark">
+    <h1>Vault <em>&amp;</em> Ledger</h1>
+    <span>Passwords · Accounts · Joyce Ann Gonzales Yap.</span>
+  </div>
+  <div class="head-actions">
+    <span class="stamp" id="stamp">—</span>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle light/dark theme" aria-pressed="false">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+    <a class="btn" href="vault-dashboard.html" target="_blank" rel="noopener">Subscription Vault</a>
+    <button class="btn" id="refreshBtn">Refresh data</button>
+  </div>
+</header>
+
+<main>
+  <!-- error notice -->
+  <div class="notice error hidden" id="errorNotice"></div>
+
+  <!-- ============ DASHBOARD SECTION ============ -->
+  <div class="section-head" style="margin-top:6px">
+    <h2>Security Overview</h2><div class="rule"></div>
+    <span class="count" id="asOf"></span>
+  </div>
+
+  <div class="kpis" id="kpiSecurity"></div>
+
+  <!-- ============ VAULT SECTION ============ -->
+  <div class="section-head">
+    <h2>Accounts</h2><div class="rule"></div>
+    <span class="count" id="rowCount"></span>
+  </div>
+
+  <div class="filters">
+    <input type="search" id="q" placeholder="Search platform, username, email, notes…" aria-label="Search accounts">
+    <select id="fCat" aria-label="Filter by category">
+      <option value="">All categories</option>
+      <option>Social Media</option>
+      <option>Email Accounts</option>
+      <option>Workshops / Learning Platforms</option>
+      <option>Work Accounts</option>
+      <option>Client Accounts</option>
+      <option>Relatives' Accounts</option>
+      <option>Banking &amp; Finance Apps</option>
+      <option>Online Shopping</option>
+      <option>Job Boards / Freelance Platforms</option>
+      <option>Government Portals</option>
+      <option>Phone / Computer Accounts</option>
+      <option>Projects/Log In</option>
+      <option>Others</option>
+    </select>
+    <button class="icon-btn" id="clearBtn">Clear</button>
+  </div>
+
+  <div class="table-wrap">
+    <div class="loading" id="loading"><span class="spin"></span>Fetching your vault…</div>
+    <table id="vaultTable" class="hidden">
+      <thead><tr>
+        <th>Platform</th>
+        <th>Username</th>
+        <th>Email</th>
+        <th>Recovery email</th>
+        <th>Source Link</th>
+        <th>Hint Password</th>
+        <th>PIN</th>
+        <th>Date created</th>
+        <th>Account age</th>
+        <th>Password last updated</th>
+        <th>Notes</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="empty hidden" id="empty">No accounts match these filters. Adjust the search or choose “Clear.”</div>
+  </div>
+</main>
+
+<footer>
+  <b>Security reminder:</b> this page displays whatever is in your sheet. Keep storing password <i>hints</i>, not
+  real passwords; hints stay masked until you tap the eye icon. Don't share this page's URL or token.
+</footer>
+
+<script>
+/* ==========================================================
+   CONFIG — paste your values from the Apps Script deployment
+   ========================================================== */
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxn_lQ2TGmqn6xaoJTA-QB3UAnSWM1AaCVPYnl1Bn49l6RG4csIc_vmuwa5QSeNBUIF/exec"; // same deployment as vault-dashboard.html
+const API_TOKEN   = "passwordvaultsubscriptiontracker2026";
+/* ========================================================== */
+
+const MS_DAY = 86400000;
+const today = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+const parseD = s => { if(!s) return null; const d = new Date(s + "T00:00:00"); return isNaN(d) ? null : d; };
+const fmtAge = days => {
+  if (days == null) return "—";
+  if (days < 0) return "—";
+  if (days >= 365){ const y = Math.floor(days/365), m = Math.floor((days%365)/30); return y + "y" + (m ? " " + m + "m" : ""); }
+  return days + "d";
+};
+
+let rows = [];        // enriched account rows
+let revealAll = false;
+
+/* ---------- derive computed fields from raw data ---------- */
+function enrich(a){
+  const pwUpdated = parseD(a.lastUpdated);
+  const created = parseD(a.dateCreated);
+  const pwAge = pwUpdated ? Math.round((today() - pwUpdated) / MS_DAY) : null;
+  const acctAgeDays = created ? Math.round((today() - created) / MS_DAY) : null;
+  return {...a, pwAge, acctAgeDays, created, pwUpdated};
+}
+
+/* ---------- KPI rendering ---------- */
+function kpiCard(cls, label, value, sub){
+  return `<div class="kpi ${cls}"><div class="label">${label}</div><div class="value">${value}</div>${sub?`<div class="sub">${sub}</div>`:""}</div>`;
+}
+
+function renderKPIs(){
+  const pwOver = rows.filter(r=>r.pwAge!=null && r.pwAge>=180).length;
+  const fresh = rows.filter(r=>r.pwAge!=null && r.pwAge<90).length;
+
+  document.getElementById("kpiSecurity").innerHTML =
+    kpiCard("", "Total accounts", rows.length, "across all categories") +
+    kpiCard(pwOver ? "bad" : "ok", "Passwords 180+ days old", pwOver, "change now") +
+    kpiCard("ok", "Fresh passwords (<90d)", fresh, "recently rotated");
+}
+
+/* ---------- vault table ---------- */
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function renderTable(){
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const cat = document.getElementById("fCat").value;
+
+  const filtered = rows.filter(r=>{
+    if (cat && r.category !== cat) return false;
+    if (q){
+      const hay = [r.name,r.username,r.email,r.recoveryEmail,r.category,r.notes].join(" ").toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById("rowCount").textContent = filtered.length + " of " + rows.length + " accounts";
+  const tbody = document.getElementById("tbody");
+  const empty = document.getElementById("empty");
+  const table = document.getElementById("vaultTable");
+  table.classList.remove("hidden");
+  empty.classList.toggle("hidden", filtered.length > 0);
+
+  tbody.innerHTML = filtered.map((r,i)=>{
+    const hintShown = revealAll || r._show;
+    return `<tr>
+      <td><div class="svc">${esc(r.name)}</div><div class="cat">${esc(r.category)}</div></td>
+      <td class="usr">${esc(r.username) || "—"}</td>
+      <td class="usr">${r.email ? `<a href="mailto:${esc(r.email)}">${esc(r.email)}</a>` : "—"}</td>
+      <td class="usr">${r.recoveryEmail ? `<a href="mailto:${esc(r.recoveryEmail)}">${esc(r.recoveryEmail)}</a>` : "—"}</td>
+      <td class="mono">${r.url ? `<a href="https://${esc(r.url.replace(/^https?:\/\//,""))}" target="_blank" rel="noopener">${esc(r.url)}</a>` : "—"}</td>
+      <td><div class="hint-cell"><span class="val">${hintShown ? esc(r.hint||"—") : "••••••••"}</span>
+        <button class="eye" data-i="${i}" aria-label="${hintShown?"Hide":"Show"} hint">${hintShown?"🙈":"👁"}</button></div></td>
+      <td class="mono">${r.pin ? (hintShown ? esc(r.pin) : "••••") : "—"}</td>
+      <td class="mono">${r.created ? r.created.toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"}) : "—"}</td>
+      <td class="mono">${fmtAge(r.acctAgeDays)}</td>
+      <td class="mono">${r.pwUpdated ? r.pwUpdated.toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"}) : "—"}</td>
+      <td>${esc(r.notes) || "—"}</td>
+    </tr>`;
+  }).join("");
+
+  tbody.querySelectorAll(".eye").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      const r = filtered[Number(b.dataset.i)];
+      r._show = !r._show;
+      renderTable();
+    });
+  });
+}
+
+/* ---------- data loading ---------- */
+async function load(){
+  const loading = document.getElementById("loading");
+  const errN = document.getElementById("errorNotice");
+  errN.classList.add("hidden");
+  loading.classList.remove("hidden");
+  document.getElementById("vaultTable").classList.add("hidden");
+  document.getElementById("empty").classList.add("hidden");
+
+  try{
+    const res = await fetch(`${WEB_APP_URL}?token=${encodeURIComponent(API_TOKEN)}&sheet=accounts`);
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "The API returned an error.");
+    document.getElementById("stamp").textContent = "synced " + new Date().toLocaleTimeString("en-PH",{hour:"numeric",minute:"2-digit"});
+    rows = json.accounts.map(enrich);
+    document.getElementById("asOf").textContent = new Date().toLocaleDateString("en-PH",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
+
+    renderKPIs();
+    renderTable();
+  } catch(err){
+    errN.textContent = "Couldn't fetch the vault: " + err.message +
+      " — check that the Web app is deployed (access: Anyone), the URL ends in /exec, and the token matches Code.gs.";
+    errN.classList.remove("hidden");
+  } finally {
+    loading.classList.add("hidden");
+  }
+}
+
+/* ---------- events ---------- */
+["q","fCat"].forEach(id =>
+  document.getElementById(id).addEventListener("input", renderTable));
+document.getElementById("clearBtn").addEventListener("click", ()=>{
+  ["q","fCat"].forEach(id => document.getElementById(id).value = "");
+  renderTable();
+});
+document.getElementById("refreshBtn").addEventListener("click", load);
+
+/* ---------- theme toggle ---------- */
+const themeBtn = document.getElementById("themeToggle");
+function applyTheme(mode){
+  document.documentElement.setAttribute("data-theme", mode);
+  themeBtn.setAttribute("aria-pressed", String(mode === "light"));
+  localStorage.setItem("vault-theme", mode);
+}
+applyTheme(localStorage.getItem("vault-theme") === "light" ? "light" : "dark");
+themeBtn.addEventListener("click", ()=>{
+  applyTheme(document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light");
+});
+
+load();
+</script>
+</body>
+</html>

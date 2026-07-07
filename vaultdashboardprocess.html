@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>How Vault &amp; Ledger Was Built — Technical Process</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#1B2A4A; --navy-deep:#101B33; --navy-soft:#22345B;
+    --gold:#C9A227; --gold-soft:#E4C558; --cream:#FAF6EC;
+    --ink:#E8ECF4; --muted:#8A94A8; --line:#2C3D63;
+    --ok:#4CAF7D; --warn:#E4B34A; --bad:#E06B5D;
+    --btn-ink:#101B33;
+    --radius:12px;
+    --body:'Inter',system-ui,sans-serif;
+    --display:'Playfair Display',serif;
+    --mono:'IBM Plex Mono',monospace;
+  }
+  html[data-theme="light"]{
+    --navy:#FFFFFF; --navy-deep:#FAF3E1; --navy-soft:#F3E7C9;
+    --gold:#C9A227; --gold-soft:#A9821E; --cream:#1B2A4A;
+    --ink:#2B2B2B; --muted:#7A7264; --line:#E5D9B6;
+    --ok:#2E8B57; --warn:#B8860B; --bad:#C0392B;
+    --btn-ink:#101B33;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--navy-deep);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.65;min-height:100vh;transition:background .2s,color .2s}
+  a{color:var(--gold-soft)}
+  ::selection{background:var(--gold);color:var(--btn-ink)}
+
+  header{background:var(--navy);border-bottom:1px solid var(--line);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;position:sticky;top:0;z-index:20}
+  .brand{display:flex;align-items:baseline;gap:9px}
+  .brand b{font-family:var(--display);font-weight:700;font-size:16px;color:var(--cream)}
+  .brand span{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+  .head-actions{display:flex;align-items:center;gap:10px}
+  .back-link{font-size:12.5px;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:6px}
+  .back-link:hover{color:var(--gold-soft)}
+  button{font-family:var(--body);cursor:pointer}
+  .icon-btn{background:var(--navy-soft);border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:9px;display:flex;align-items:center;justify-content:center}
+  .icon-btn:hover{color:var(--cream);border-color:var(--gold)}
+  .icon-btn svg{width:15px;height:15px;display:block}
+  #themeToggle .icon-moon{display:none}
+  html[data-theme="light"] #themeToggle .icon-sun{display:none}
+  html[data-theme="light"] #themeToggle .icon-moon{display:block}
+
+  main{max-width:820px;margin:0 auto;padding:0 28px}
+
+  /* ---------- hero ---------- */
+  .hero{padding:64px 0 40px;border-bottom:1px solid var(--line)}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin-bottom:16px}
+  h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,4.6vw,42px);line-height:1.15;color:var(--cream);max-width:18ch}
+  .dek{font-size:16.5px;color:var(--muted);max-width:60ch;margin-top:18px}
+  .badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:26px}
+  .badge{font-family:var(--mono);font-size:11px;color:var(--gold-soft);border:1px solid var(--line);background:var(--navy);border-radius:20px;padding:5px 12px}
+
+  /* ---------- sections ---------- */
+  section{padding:44px 0;border-bottom:1px solid var(--line)}
+  section:last-of-type{border-bottom:none}
+  .s-head{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+  .s-num{font-family:var(--mono);font-size:12px;color:var(--gold);border:1px solid var(--line);border-radius:6px;padding:3px 8px;flex-shrink:0}
+  h2{font-family:var(--display);font-weight:600;font-size:23px;color:var(--cream)}
+  h3{font-family:var(--display);font-weight:600;font-size:17px;color:var(--cream);margin:22px 0 10px}
+  p{margin-bottom:14px;color:var(--ink);max-width:68ch}
+  p:last-child{margin-bottom:0}
+  .lede{font-size:16.5px}
+  ul.list{list-style:none;margin:14px 0;display:grid;gap:10px}
+  ul.list li{position:relative;padding-left:20px;color:var(--ink);max-width:64ch}
+  ul.list li::before{content:"";position:absolute;left:0;top:9px;width:6px;height:6px;border-radius:50%;background:var(--gold)}
+
+  /* ---------- code blocks ---------- */
+  .code-block{background:var(--navy);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:16px 0}
+  .code-head{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--navy-soft);border-bottom:1px solid var(--line)}
+  .code-label{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.05em}
+  .copy-btn{font-family:var(--mono);font-size:10.5px;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:6px;padding:4px 9px}
+  .copy-btn:hover{color:var(--gold-soft);border-color:var(--gold)}
+  .code-block pre{padding:16px;overflow-x:auto}
+  .code-block code{font-family:var(--mono);font-size:12.5px;color:var(--ink);line-height:1.7;white-space:pre}
+  .tok-key{color:var(--gold-soft)}
+  .tok-str{color:var(--ok)}
+  .tok-com{color:var(--muted)}
+
+  .note{background:var(--navy-soft);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:8px;padding:12px 16px;font-size:13.5px;color:var(--muted);margin:16px 0}
+  .note b{color:var(--cream)}
+
+  /* ---------- flow diagram ---------- */
+  .flow{display:flex;flex-direction:column;align-items:center;margin:24px 0 8px}
+  .flow-box{background:var(--navy);border:1px solid var(--line);border-radius:10px;padding:14px 20px;text-align:center;width:100%;max-width:420px}
+  .flow-box b{display:block;color:var(--cream);font-size:14px;margin-bottom:4px}
+  .flow-box span{font-size:12px;color:var(--muted)}
+  .flow-arrow{font-family:var(--mono);font-size:18px;color:var(--gold);line-height:1;padding:6px 0}
+  .flow-fork{display:flex;gap:24px;justify-content:center;width:100%;max-width:640px;margin-top:0}
+  .flow-fork .flow-col{flex:1;display:flex;flex-direction:column;align-items:center}
+  .flow-fork .flow-box{max-width:none}
+
+  /* ---------- deploy steps ---------- */
+  ol.steps{list-style:none;margin:16px 0 0;counter-reset:step;display:grid;gap:18px}
+  ol.steps li{position:relative;padding-left:40px;max-width:66ch}
+  ol.steps li::before{counter-increment:step;content:counter(step);position:absolute;left:0;top:-2px;width:27px;height:27px;border-radius:7px;background:var(--navy-soft);border:1px solid var(--line);color:var(--gold-soft);font-family:var(--mono);font-size:12.5px;font-weight:600;display:flex;align-items:center;justify-content:center}
+  ol.steps li b{color:var(--cream);display:block;margin-bottom:3px}
+
+  /* ---------- prompt block ---------- */
+  .prompt-block{background:var(--navy);border:1px solid var(--gold);border-radius:10px;padding:0;overflow:hidden;margin-top:16px}
+  .prompt-block .code-head{background:rgba(201,162,39,.1)}
+  .prompt-block pre{padding:20px;white-space:pre-wrap;font-family:var(--mono);font-size:13px;line-height:1.75;color:var(--ink)}
+
+  footer{max-width:820px;margin:0 auto;padding:40px 28px 60px;color:var(--muted);font-size:11.5px}
+
+  @media(max-width:640px){
+    header{padding:14px 18px}
+    main,footer{padding-left:18px;padding-right:18px}
+    .hero{padding:44px 0 32px}
+    .flow-fork{flex-direction:column;align-items:center;gap:0}
+    .flow-fork .flow-box{max-width:420px;margin-bottom:0}
+    ol.steps li{padding-left:34px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <b>TechPartners Systems</b>
+    <span>Build Log</span>
+  </div>
+  <div class="head-actions">
+    <a class="back-link" href="vault-dashboard.html">&larr; Vault &amp; Ledger</a>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle light/dark theme" aria-pressed="false">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+
+  <div class="hero">
+    <div class="eyebrow">Technical Process · Build Log</div>
+    <h1>How Vault &amp; Ledger Was Built</h1>
+    <p class="dek">A plain-language, step-by-step walkthrough of how the two dashboards, the backend, and the deployment fit together — written so you can follow it, explain it, or hand it to someone else to rebuild.</p>
+    <div class="badges">
+      <span class="badge">HTML5</span>
+      <span class="badge">CSS3</span>
+      <span class="badge">Vanilla JavaScript</span>
+      <span class="badge">Google Apps Script</span>
+      <span class="badge">Fetch API</span>
+      <span class="badge">LocalStorage</span>
+      <span class="badge">Responsive Design</span>
+    </div>
+  </div>
+
+  <!-- 01 — WHAT'S IN THE SYSTEM -->
+  <section id="parts">
+    <div class="s-head"><span class="s-num">01</span><h2>What's in the system</h2></div>
+    <p class="lede">Three files do all the work. No framework, no build tools, nothing to install.</p>
+    <ul class="list">
+      <li><b style="color:var(--cream)">Code.gs</b> — lives inside the Google Sheet. It's the only piece that ever touches the sheet's data.</li>
+      <li><b style="color:var(--cream)">vault-dashboard.html</b> — the Subscription Vault. Money, plans, due dates.</li>
+      <li><b style="color:var(--cream)">vault-dashboard-emails.html</b> — the Email Vault. Accounts, logins, password hints.</li>
+    </ul>
+    <p>Both dashboards are just single files you can open in any browser. They don't run on a server you have to maintain — they call out to one small script that Google hosts for you, for free.</p>
+  </section>
+
+  <!-- 02 — FLOW DIAGRAM -->
+  <section id="flow">
+    <div class="s-head"><span class="s-num">02</span><h2>The flow, in one picture</h2></div>
+    <p>Data only moves one way: out of the sheet, through the script, into whichever dashboard asked for it.</p>
+    <div class="flow">
+      <div class="flow-box"><b>Google Sheet</b><span>Two tabs: "Vault" and "Accounts" — your actual data, nothing else</span></div>
+      <div class="flow-arrow">&darr;</div>
+      <div class="flow-box"><b>Code.gs (Apps Script)</b><span>Checks the secret token, reads the right tab, hands back clean JSON</span></div>
+      <div class="flow-arrow">&darr;</div>
+      <div class="flow-box"><b>One deployed Web App URL</b><span>A single web address — a query parameter decides which tab to read</span></div>
+      <div class="flow-arrow">&darr;</div>
+      <div class="flow-fork">
+        <div class="flow-col">
+          <div class="flow-box"><b>vault-dashboard.html</b><span>?sheet= not set &rarr; reads "Vault"</span></div>
+        </div>
+        <div class="flow-col">
+          <div class="flow-box"><b>vault-dashboard-emails.html</b><span>?sheet=accounts &rarr; reads "Accounts"</span></div>
+        </div>
+      </div>
+      <div class="flow-arrow">&darr;</div>
+      <div class="flow-box"><b>Your browser</b><span>KPI cards + searchable table, light or dark, phone or desktop</span></div>
+    </div>
+    <div class="note"><b>Why one script instead of two:</b> both dashboards need the same kind of security check and the same "turn sheet rows into JSON" logic. Writing that once and branching on a query parameter means one thing to maintain instead of two.</div>
+  </section>
+
+  <!-- 03 — THE DATA LAYER -->
+  <section id="data">
+    <div class="s-head"><span class="s-num">03</span><h2>Step 1 — Set up the data layer</h2></div>
+    <p>Everything starts as rows in a Google Sheet — no database to install. One spreadsheet, two tabs:</p>
+    <ul class="list">
+      <li><b style="color:var(--cream)">Vault</b> tab — one row per subscription: account name, category, priority, username, password hint, plan, amount, due date, payment status.</li>
+      <li><b style="color:var(--cream)">Accounts</b> tab — one row per login: platform, category, username, email, recovery email, source link, password hint, PIN, date created, password last updated, notes.</li>
+    </ul>
+    <p>The first row of each tab is just column headers for you to read — the script always starts pulling data from row 2, so headers never get mistaken for a real account.</p>
+  </section>
+
+  <!-- 04 — THE BACKEND -->
+  <section id="backend">
+    <div class="s-head"><span class="s-num">04</span><h2>Step 2 — Write the backend (Code.gs)</h2></div>
+    <p>Apps Script is a small scripting tool built into every Google Sheet — Extensions &rarr; Apps Script. It runs Google's own servers, so there's nothing separate to host or pay for. Three things it needs to do: check a password, read the right tab, and hand the data back as JSON (a plain, structured text format browsers understand instantly).</p>
+
+    <h3>The secret token and sheet names</h3>
+    <p>These live at the very top of the file, in one place, so they're easy to change later:</p>
+    <div class="code-block">
+      <div class="code-head"><span class="code-label">Code.gs — top of file</span><button class="copy-btn" data-copy="cfg">Copy</button></div>
+      <pre><code id="cfg">const API_TOKEN           = 'YOUR-LONG-RANDOM-SECRET';
+const SHEET_NAME          = 'Vault';     // read by vault-dashboard.html
+const SHEET_NAME_ACCOUNTS = 'Accounts';  // read by vault-dashboard-emails.html</code></pre>
+    </div>
+    <p>The token is just a password the script checks before it answers. Anyone who has your Web App URL <i>and</i> this token can read your data — so it's never shared anywhere public, only pasted into your own dashboard files.</p>
+
+    <h3>The entry point — doGet</h3>
+    <p>Every request to the deployed script runs this one function first. It's the gatekeeper and the router in one:</p>
+    <div class="code-block">
+      <div class="code-head"><span class="code-label">Code.gs — doGet()</span><button class="copy-btn" data-copy="doget">Copy</button></div>
+      <pre><code id="doget">function doGet(e) {
+  const p = (e && e.parameter) || {};
+
+  if (p.token !== API_TOKEN) {
+    return jsonResponse_({ ok: false, error: 'Unauthorized' });
+  }
+
+  const accounts = p.sheet === 'accounts' ? readAccounts_() : readVault_();
+  return jsonResponse_({ ok: true, accounts: accounts });
+}</code></pre>
+    </div>
+    <p>Wrong or missing token &rarr; it refuses and says so. Right token, no <span class="badge" style="padding:2px 8px">?sheet=accounts</span> &rarr; it reads the Vault tab. Right token <i>with</i> <span class="badge" style="padding:2px 8px">?sheet=accounts</span> &rarr; it reads the Accounts tab instead. That one parameter is the entire difference between the two dashboards' data sources.</p>
+
+    <h3>Reading a tab into clean data</h3>
+    <p>Each tab gets its own small reader function — same shape, different columns:</p>
+    <div class="code-block">
+      <div class="code-head"><span class="code-label">Code.gs — readVault_() (shortened)</span><button class="copy-btn" data-copy="readvault">Copy</button></div>
+      <pre><code id="readvault">function readVault_() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  const lastRow = Math.min(sheet.getLastRow(), MAX_ROWS);
+  if (lastRow < 2) return [];
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 20).getValues();
+  const out = [];
+
+  values.forEach(function (row) {
+    const name = String(row[0] || '').trim();
+    if (!name) return; // skip blank rows
+
+    out.push({
+      name: name,
+      category: String(row[1] || ''),
+      username: String(row[3] || ''),
+      hint: String(row[4] || ''),
+      plan: String(row[11] || ''),
+      amount: row[12] === '' ? null : Number(row[12]),
+      dueDate: toISO_(row[15])
+      // ...remaining columns follow the same pattern
+    });
+  });
+
+  return out;
+}</code></pre>
+    </div>
+    <p>Each row becomes one plain object. Dates get converted to a simple <span class="badge" style="padding:2px 8px">YYYY-MM-DD</span> text format so the browser can read them with zero guesswork about timezones.</p>
+  </section>
+
+  <!-- 05 — DEPLOY THE BACKEND -->
+  <section id="deploy">
+    <div class="s-head"><span class="s-num">05</span><h2>Step 3 — Deploy it as a Web App</h2></div>
+    <p>This turns the script into a real web address that any dashboard can call:</p>
+    <ol class="steps">
+      <li><b>Open the Sheet &rarr; Extensions &rarr; Apps Script</b></li>
+      <li><b>Paste in Code.gs</b>, save it</li>
+      <li><b>Deploy &rarr; New deployment &rarr; type: Web app</b></li>
+      <li><b>Execute as: Me</b> — it runs with your own Google account's access to the sheet</li>
+      <li><b>Who has access: Anyone</b> — needed so the dashboard (running in a plain browser, not logged into Google) can reach it. The token is what keeps it actually private, not this setting</li>
+      <li><b>Click Deploy, authorize once</b>, then copy the Web App URL it gives you — it always ends in <span class="badge" style="padding:2px 8px">/exec</span></li>
+      <li><b>Every time Code.gs changes</b>, go back to Manage deployments &rarr; edit &rarr; New version &rarr; Deploy. The URL stays the same; only the logic behind it updates</li>
+    </ol>
+  </section>
+
+  <!-- 06 — CONNECT THE FRONT END -->
+  <section id="connect">
+    <div class="s-head"><span class="s-num">06</span><h2>Step 4 — Connect each dashboard to it</h2></div>
+    <p>Near the top of each HTML file's script, one small block holds the two values that came out of deployment:</p>
+    <div class="code-block">
+      <div class="code-head"><span class="code-label">vault-dashboard.html — CONFIG block</span><button class="copy-btn" data-copy="feconfig">Copy</button></div>
+      <pre><code id="feconfig">const WEB_APP_URL = "https://script.google.com/macros/s/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/exec";
+const API_TOKEN   = "YOUR-LONG-RANDOM-SECRET";</code></pre>
+    </div>
+    <p>That's the whole connection — same two values, pasted into <i>both</i> dashboard files. The only difference between them is one extra piece added to the web address when the Email Vault asks for data:</p>
+    <div class="code-block">
+      <div class="code-head"><span class="code-label">vault-dashboard-emails.html — the actual fetch</span><button class="copy-btn" data-copy="fetchcall">Copy</button></div>
+      <pre><code id="fetchcall">const res = await fetch(`${WEB_APP_URL}?token=${encodeURIComponent(API_TOKEN)}&sheet=accounts`);
+const json = await res.json();
+rows = json.accounts.map(enrich);</code></pre>
+    </div>
+    <p><span class="badge" style="padding:2px 8px">fetch</span> is the browser's built-in way of calling a web address and waiting for an answer — no library needed. <span class="badge" style="padding:2px 8px">enrich()</span> then takes each raw row and calculates the things that shouldn't be stored, like "how many days old is this password" — worked out fresh every time the page loads, from the raw date, so it's never out of date.</p>
+    <div class="note"><b>What actually shows on screen</b> is plain JavaScript building HTML text from that data (KPI numbers, table rows) and dropping it into the page. CSS then handles all the color, spacing, and the light/dark theme — HTML is the structure, CSS is the look, JavaScript is what fetches the data and keeps it up to date as you search or filter.</div>
+  </section>
+
+  <!-- 07 — EXTRAS -->
+  <section id="extras">
+    <div class="s-head"><span class="s-num">07</span><h2>Step 5 — Theme, login gate, mobile</h2></div>
+    <p>Three finishing touches, added once the data was flowing correctly:</p>
+    <h3>Light / dark toggle</h3>
+    <div class="code-block">
+      <div class="code-head"><span class="code-label">Theme toggle — shared by both dashboards</span><button class="copy-btn" data-copy="theme">Copy</button></div>
+      <pre><code id="theme">function applyTheme(mode){
+  document.documentElement.setAttribute("data-theme", mode);
+  localStorage.setItem("vault-theme", mode);
+}
+themeBtn.addEventListener("click", () => {
+  applyTheme(document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light");
+});</code></pre>
+    </div>
+    <p>All the colors are defined once as CSS variables. Flipping <span class="badge" style="padding:2px 8px">data-theme</span> swaps every color at once — <span class="badge" style="padding:2px 8px">localStorage</span> just remembers your choice for next time, on that browser.</p>
+
+    <h3>A soft login gate</h3>
+    <p>A simple username/password screen sits in front of the Subscription Vault — enough to stop casual access, not meant as bank-grade security:</p>
+    <div class="code-block">
+      <div class="code-head"><span class="code-label">Login check</span><button class="copy-btn" data-copy="login">Copy</button></div>
+      <pre><code id="login">if (user === LOGIN_USER && pass === LOGIN_PASS) {
+  localStorage.setItem("vault-auth", "1");
+  enterApp();
+}</code></pre>
+    </div>
+    <p>Because this check runs in the browser, anyone who opens the page's source code can technically read the password — it's a front door, not a vault door. For a personal tool that's the right amount of security for the effort; a client-facing version would move this check onto the server side instead.</p>
+
+    <h3>Mobile responsiveness</h3>
+    <p>CSS media queries reshape the layout under certain screen widths — KPI cards stack from a row of eight down to one column, filters go full-width, and the table scrolls sideways instead of squeezing illegibly small. Nothing is hidden on mobile, it just re-flows.</p>
+  </section>
+
+  <!-- 08 — DEPLOYMENT SUMMARY -->
+  <section id="summary">
+    <div class="s-head"><span class="s-num">08</span><h2>Full deployment checklist</h2></div>
+    <ol class="steps">
+      <li><b>Build the sheet</b> — two tabs, headers in row 1, data from row 2</li>
+      <li><b>Write Code.gs</b> — token, sheet names, doGet, one reader function per tab</li>
+      <li><b>Deploy as Web App</b> — Execute as Me, Access: Anyone, copy the /exec URL</li>
+      <li><b>Paste URL + token</b> into the CONFIG block of both HTML files</li>
+      <li><b>Open the HTML files directly</b>, or drop them on any static host (Netlify, GitHub Pages, a plain folder) — no server, no build step</li>
+      <li><b>Re-deploy a new version</b> in Apps Script any time Code.gs changes — the URL never changes, only what's behind it</li>
+    </ol>
+  </section>
+
+  <!-- 09 — PROMPT -->
+  <section id="prompt">
+    <div class="s-head"><span class="s-num">09</span><h2>The prompt — reuse this for anyone</h2></div>
+    <p>This is the actual brief that produces this system. Swap the bracketed parts per client and it holds up as a starting point for the same build again.</p>
+    <div class="prompt-block">
+      <div class="code-head"><span class="code-label">Reusable build prompt</span><button class="copy-btn" data-copy="aiprompt">Copy</button></div>
+      <pre id="aiprompt">Build me a personal password + subscription tracker as static HTML files — no framework, no build step — in a dark navy/gold theme with a light-mode toggle.
+
+Data should live in a Google Sheet, read through a Google Apps Script Web App (Code.gs) that returns JSON, gated by a secret token. I want two dashboards sharing that one backend, routed by a "?sheet=" query parameter instead of duplicating the script:
+
+1. A Subscription Vault — KPI cards for monthly spend, yearly spend, active subscriptions, overdue payments, due-in-7-days, high priority accounts, marked unpaid, and total accounts. A searchable, filterable table with columns: Account, Priority, Username, Hint Password, Subscription Plan, Payment Status, Plan Amount, Next Due, Payment Alert, Source Link.
+
+2. An Email Vault — KPI cards for total accounts, passwords 180+ days old, and fresh passwords. A searchable, filterable table with columns: Platform, Username, Email, Recovery Email, Source Link, Hint Password, PIN, Date Created, Account Age, Password Last Updated, Notes. Category filter with: [LIST YOUR CATEGORIES HERE].
+
+Both dashboards should:
+- Mask sensitive fields (hints, PINs) behind an eye-icon reveal toggle
+- Support light/dark theme, remembered via localStorage
+- Be fully mobile responsive
+- Sit behind a simple username/password login gate for casual access control
+- Cross-link to each other with a button in the header
+- Calculate anything date-based (password age, account age, days until due) on page load instead of storing it, so it's always accurate
+
+Give me the complete Code.gs and both HTML files, plus the exact steps to deploy the Apps Script as a Web App and wire the URL and token into the HTML.</pre>
+    </div>
+    <p>Hand this to whoever's doing the build — a developer, an AI assistant, or your future self six months from now who's forgotten how the pieces fit together.</p>
+  </section>
+
+</main>
+
+<footer>
+  Internal build log — Vault &amp; Ledger. Keep this file off any public host; it documents structure, not secrets, but treat it the same as the dashboards it describes.
+</footer>
+
+<script>
+const themeBtn = document.getElementById("themeToggle");
+function applyTheme(mode){
+  document.documentElement.setAttribute("data-theme", mode);
+  themeBtn.setAttribute("aria-pressed", String(mode === "light"));
+  localStorage.setItem("vault-theme", mode);
+}
+applyTheme(localStorage.getItem("vault-theme") === "light" ? "light" : "dark");
+themeBtn.addEventListener("click", ()=>{
+  applyTheme(document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light");
+});
+
+document.querySelectorAll(".copy-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    const target = document.getElementById(btn.dataset.copy);
+    const text = target.innerText;
+    navigator.clipboard.writeText(text).then(()=>{
+      const orig = btn.textContent;
+      btn.textContent = "Copied";
+      setTimeout(()=>{ btn.textContent = orig; }, 1400);
+    });
+  });
+});
+</script>
+</body>
+</html>

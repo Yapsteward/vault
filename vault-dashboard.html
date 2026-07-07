@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Vault &amp; Ledger — Password Vault + Subscription Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#1B2A4A; --navy-deep:#101B33; --navy-soft:#22345B;
+    --gold:#C9A227; --gold-soft:#E4C558; --cream:#FAF6EC;
+    --ink:#E8ECF4; --muted:#8A94A8; --line:#2C3D63;
+    --ok:#4CAF7D; --warn:#E4B34A; --bad:#E06B5D;
+    --btn-ink:#101B33;
+    --radius:12px;
+    --body:'Inter',system-ui,sans-serif;
+    --display:'Playfair Display',serif;
+    --mono:'IBM Plex Mono',monospace;
+  }
+  html[data-theme="light"]{
+    --navy:#FFFFFF; --navy-deep:#FAF3E1; --navy-soft:#F3E7C9;
+    --gold:#C9A227; --gold-soft:#A9821E; --cream:#1B2A4A;
+    --ink:#2B2B2B; --muted:#7A7264; --line:#E5D9B6;
+    --ok:#2E8B57; --warn:#B8860B; --bad:#C0392B;
+    --btn-ink:#101B33;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--navy-deep);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.5;min-height:100vh;transition:background .2s,color .2s}
+  a{color:var(--gold-soft)}
+
+  /* ---------- header ---------- */
+  header{background:var(--navy);border-bottom:1px solid var(--line);padding:20px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .wordmark{display:flex;align-items:baseline;gap:12px}
+  .wordmark h1{font-family:var(--display);font-weight:700;font-size:24px;color:var(--cream);letter-spacing:.3px}
+  .wordmark h1 em{font-style:normal;color:var(--gold)}
+  .wordmark span{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+  .head-actions{display:flex;align-items:center;gap:10px}
+  .stamp{font-family:var(--mono);font-size:11px;color:var(--muted)}
+  button{font-family:var(--body);cursor:pointer}
+  .btn{background:var(--gold);color:var(--btn-ink);border:none;border-radius:8px;padding:9px 16px;font-weight:600;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;cursor:pointer}
+  .btn:hover{background:var(--gold-soft)}
+  .btn:focus-visible,.icon-btn:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  .icon-btn svg{width:15px;height:15px;vertical-align:-3px;display:block}
+  #themeToggle{display:flex;align-items:center;justify-content:center;padding:9px}
+  #themeToggle .icon-moon{display:none}
+  html[data-theme="light"] #themeToggle .icon-sun{display:none}
+  html[data-theme="light"] #themeToggle .icon-moon{display:block}
+
+  main{max-width:1240px;margin:0 auto;padding:26px 28px 60px}
+
+  /* ---------- notices ---------- */
+  .notice{border-radius:var(--radius);padding:14px 18px;margin-bottom:22px;font-size:13px}
+  .notice.error{background:#3A1B17;border:1px solid #7A3A32;color:#F3C4BC}
+  .notice code{font-family:var(--mono);background:rgba(0,0,0,.3);padding:1px 6px;border-radius:4px}
+  html[data-theme="light"] .notice.error{background:#FBE1DD;border-color:#D99A90;color:#6B241A}
+  html[data-theme="light"] .notice code{background:rgba(0,0,0,.06)}
+  .hidden{display:none !important}
+
+  /* ---------- section headings ---------- */
+  .section-head{display:flex;align-items:baseline;gap:14px;margin:34px 0 16px}
+  .section-head h2{font-family:var(--display);font-size:21px;color:var(--cream);font-weight:600}
+  .section-head .rule{flex:1;height:1px;background:linear-gradient(90deg,var(--gold) 0,var(--line) 60%,transparent)}
+  .section-head .count{font-family:var(--mono);font-size:12px;color:var(--muted)}
+
+  /* ---------- KPI cards ---------- */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+  .kpi{background:var(--navy);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px 14px;position:relative;overflow:hidden}
+  .kpi::before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--gold);opacity:.85}
+  .kpi.bad::before{background:var(--bad)} .kpi.warn::before{background:var(--warn)} .kpi.ok::before{background:var(--ok)}
+  .kpi .label{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .kpi .value{font-family:var(--mono);font-size:26px;font-weight:600;color:var(--cream);line-height:1.1}
+  .kpi .value small{font-size:13px;color:var(--muted);font-weight:400}
+  .kpi .sub{font-size:11.5px;color:var(--muted);margin-top:5px}
+  .kpi.bad .value{color:var(--bad)} .kpi.warn .value{color:var(--warn)} .kpi.ok .value{color:var(--ok)}
+
+  /* ---------- payment horizon (signature) ---------- */
+  .horizon{background:var(--navy);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px 26px;margin-top:14px}
+  .horizon .h-title{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:18px}
+  .horizon .h-title b{font-family:var(--display);font-size:15px;color:var(--cream);font-weight:600}
+  .horizon .h-title span{font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .track{position:relative;height:4px;background:var(--line);border-radius:2px;margin:34px 8px 8px}
+  .track .today{position:absolute;left:0;top:-7px;width:2px;height:18px;background:var(--gold)}
+  .track .today::after{content:"TODAY";position:absolute;top:-16px;left:-4px;font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--gold)}
+  .tick{position:absolute;top:-5px;width:10px;height:10px;border-radius:50%;background:var(--cream);border:2px solid var(--navy);transform:translateX(-50%);cursor:default}
+  .tick.bad{background:var(--bad)} .tick.warn{background:var(--warn)} .tick.ok{background:var(--ok)}
+  .tick:hover .tip,.tick:focus .tip{opacity:1;pointer-events:auto}
+  .tip{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);background:var(--navy-deep);border:1px solid var(--line);border-radius:8px;padding:8px 12px;white-space:nowrap;font-size:12px;opacity:0;transition:opacity .15s;pointer-events:none;z-index:5}
+  .tip b{color:var(--cream)} .tip .amt{font-family:var(--mono);color:var(--gold-soft)}
+  .horizon-list{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+  .pay-chip{display:flex;align-items:center;gap:10px;background:var(--navy-soft);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12.5px}
+  .pay-chip .d{font-family:var(--mono);font-weight:600;min-width:44px;text-align:center;border-radius:6px;padding:3px 6px;font-size:11.5px}
+  .d.bad{background:rgba(224,107,93,.15);color:var(--bad)} .d.warn{background:rgba(228,179,74,.15);color:var(--warn)} .d.ok{background:rgba(76,175,125,.15);color:var(--ok)}
+  .pay-chip .amt{font-family:var(--mono);color:var(--gold-soft)}
+  .pay-chip .who{color:var(--ink)}
+
+  /* ---------- vault filters ---------- */
+  .filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .filters input,.filters select{background:var(--navy);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:9px 12px;font-size:13px;font-family:var(--body)}
+  .filters input{flex:1;min-width:200px}
+  .filters select{max-width:230px}
+  .icon-btn{background:var(--navy);border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:9px 12px;font-size:13px}
+  .icon-btn:hover{color:var(--cream);border-color:var(--gold)}
+
+  /* ---------- vault table ---------- */
+  .table-wrap{background:var(--navy);border:1px solid var(--line);border-radius:var(--radius);overflow:auto}
+  table{width:100%;border-collapse:collapse;min-width:1080px}
+  thead th{position:sticky;top:0;background:var(--navy-soft);color:var(--muted);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+  tbody td{padding:11px 14px;border-bottom:1px solid rgba(44,61,99,.5);vertical-align:top;font-size:13px}
+  tbody tr:hover{background:rgba(201,162,39,.04)}
+  td .svc{font-weight:600;color:var(--cream)}
+  td .cat{font-size:11px;color:var(--muted);margin-top:2px}
+  td .usr{font-family:var(--mono);font-size:12px;color:var(--ink)}
+  .mono{font-family:var(--mono);font-size:12.5px}
+  .chip{display:inline-block;border-radius:6px;padding:2px 8px;font-size:11.5px;font-weight:500;white-space:nowrap}
+  .chip.ok{background:rgba(76,175,125,.14);color:var(--ok)}
+  .chip.warn{background:rgba(228,179,74,.14);color:var(--warn)}
+  .chip.bad{background:rgba(224,107,93,.14);color:var(--bad)}
+  .chip.mut{background:rgba(138,148,168,.14);color:var(--muted)}
+  .chip.gold{background:rgba(201,162,39,.14);color:var(--gold-soft)}
+  .hint-cell{display:flex;align-items:center;gap:8px}
+  .hint-cell .val{font-family:var(--mono);font-size:12px;letter-spacing:1px}
+  .eye{background:none;border:none;color:var(--muted);font-size:14px;padding:2px}
+  .eye:hover{color:var(--gold-soft)}
+  .empty,.loading{padding:44px;text-align:center;color:var(--muted)}
+  .spin{display:inline-block;width:18px;height:18px;border:2px solid var(--line);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-4px;margin-right:10px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.spin{animation:none}html{scroll-behavior:auto}}
+
+  footer{max-width:1240px;margin:0 auto;padding:0 28px 40px;color:var(--muted);font-size:11.5px}
+  footer b{color:var(--gold-soft)}
+  @media(max-width:760px){
+    .kpis{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+    .horizon-list{gap:8px}
+  }
+  @media(max-width:640px){
+    header{padding:14px 16px}
+    .head-actions{width:100%;justify-content:space-between}
+    main{padding:16px 14px 40px}
+    .wordmark h1{font-size:19px}
+    .section-head{margin:26px 0 12px;flex-wrap:wrap}
+    .section-head h2{font-size:18px}
+    .kpis{grid-template-columns:1fr 1fr;gap:8px}
+    .kpi{padding:12px 14px 11px}
+    .kpi .value{font-size:21px}
+    .horizon{padding:16px 14px 20px}
+    .filters{flex-direction:column}
+    .filters input,.filters select{width:100%;max-width:none;min-width:0}
+    .icon-btn#clearBtn{width:100%}
+    footer{font-size:11px}
+  }
+  @media(max-width:420px){
+    .kpis{grid-template-columns:1fr}
+    .wordmark{flex-direction:column;align-items:flex-start;gap:4px}
+    .head-actions{gap:8px}
+    .stamp{display:none}
+  }
+
+  /* ---------- login gate ---------- */
+  .login-gate{position:fixed;inset:0;background:var(--navy-deep);display:flex;align-items:center;justify-content:center;padding:20px;z-index:100}
+  .login-card{background:var(--navy);border:1px solid var(--line);border-radius:var(--radius);padding:32px 30px;width:100%;max-width:340px}
+  .login-card h2{font-family:var(--display);font-size:22px;color:var(--cream);font-weight:600;margin-bottom:6px}
+  .login-card p{font-size:12.5px;color:var(--muted);margin-bottom:20px}
+  .login-card input{width:100%;background:var(--navy-deep);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:10px 12px;font-size:13px;font-family:var(--body);margin-bottom:12px}
+  .login-card .btn{width:100%;justify-content:center;padding:10px 16px;margin-top:4px}
+  .login-error{color:var(--bad);font-size:12px;margin-top:12px}
+</style>
+</head>
+<body>
+
+<div class="login-gate" id="loginGate">
+  <form class="login-card" id="loginForm">
+    <h2>Vault <em style="color:var(--gold);font-style:normal">&amp;</em> Ledger</h2>
+    <p>Sign in to continue</p>
+    <input type="text" id="loginUser" placeholder="Username" autocomplete="username" required>
+    <input type="password" id="loginPass" placeholder="Password" autocomplete="current-password" required>
+    <button type="submit" class="btn">Log in</button>
+    <div class="login-error hidden" id="loginError">Incorrect username or password.</div>
+  </form>
+</div>
+
+<div id="appShell" class="hidden">
+<header>
+  <div class="wordmark">
+    <h1>Vault <em>&amp;</em> Ledger</h1>
+    <span>Passwords · Subscriptions · Joyce Ann Gonzales Yap.</span>
+  </div>
+  <div class="head-actions">
+    <span class="stamp" id="stamp">—</span>
+    <button class="icon-btn" id="themeToggle" aria-label="Toggle light/dark theme" aria-pressed="false">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+    <a class="btn" href="vault-dashboard-emails.html" target="_blank" rel="noopener">Email Vault</a>
+    <button class="btn" id="refreshBtn">Refresh data</button>
+  </div>
+</header>
+
+<main>
+  <!-- error notice -->
+  <div class="notice error hidden" id="errorNotice"></div>
+
+  <!-- ============ DASHBOARD SECTION ============ -->
+  <div class="section-head" style="margin-top:6px">
+    <h2>Dashboard</h2><div class="rule"></div>
+    <span class="count" id="asOf"></span>
+  </div>
+
+  <div class="kpis" id="kpiMoney"></div>
+
+  <div class="horizon">
+    <div class="h-title">
+      <b>Payment horizon — next 30 days</b>
+      <span id="horizonTotal"></span>
+    </div>
+    <div class="track" id="track"><div class="today"></div></div>
+    <div class="horizon-list" id="payList"></div>
+  </div>
+
+  <!-- ============ VAULT SECTION ============ -->
+  <div class="section-head">
+    <h2>Vault</h2><div class="rule"></div>
+    <span class="count" id="rowCount"></span>
+  </div>
+
+  <div class="filters">
+    <input type="search" id="q" placeholder="Search account, username, URL, notes…" aria-label="Search vault">
+    <select id="fCat" aria-label="Filter by category"><option value="">All categories</option></select>
+    <select id="fPrio" aria-label="Filter by priority">
+      <option value="">All priorities</option>
+      <option>🔥 High</option><option>⭐ Medium</option><option>▫️ Low</option>
+    </select>
+    <select id="fAlert" aria-label="Filter by payment alert">
+      <option value="">All payment states</option>
+      <option value="overdue">🔴 Overdue / due today</option>
+      <option value="soon">🟡 Due in 7 days</option>
+      <option value="ok">🟢 Scheduled</option>
+      <option value="none">— No billing</option>
+    </select>
+    <button class="icon-btn" id="clearBtn">Clear</button>
+  </div>
+
+  <div class="table-wrap">
+    <div class="loading" id="loading"><span class="spin"></span>Fetching your vault…</div>
+    <table id="vaultTable" class="hidden">
+      <thead><tr>
+        <th>Account</th><th>Priority</th><th>Username</th>
+        <th>Hint Password</th>
+        <th>Subscription Plan</th>
+        <th>Payment Status</th>
+        <th>Plan Amount</th>
+        <th>Next due</th>
+        <th>Payment Alert</th>
+        <th>Source Link</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="empty hidden" id="empty">No accounts match these filters. Adjust the search or choose “Clear.”</div>
+  </div>
+</main>
+
+<footer>
+  <b>Security reminder:</b> this page displays whatever is in your sheet. Keep storing password <i>hints</i>, not
+  real passwords; hints stay masked until you tap the eye icon. Don't share this page's URL or token.
+</footer>
+</div>
+
+<script>
+/* ==========================================================
+   CONFIG — paste your values from the Apps Script deployment
+   ========================================================== */
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxn_lQ2TGmqn6xaoJTA-QB3UAnSWM1AaCVPYnl1Bn49l6RG4csIc_vmuwa5QSeNBUIF/exec"; // ends with /exec
+const API_TOKEN   = "passwordvaultsubscriptiontracker2026";
+/* ========================================================== */
+
+const peso = n => "₱" + Number(n).toLocaleString("en-PH", {maximumFractionDigits: 0});
+const MS_DAY = 86400000;
+const today = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+const parseD = s => { if(!s) return null; const d = new Date(s + "T00:00:00"); return isNaN(d) ? null : d; };
+const daysFromToday = d => d ? Math.round((d - today()) / MS_DAY) : null;
+
+let rows = [];        // enriched account rows
+let revealAll = false;
+
+/* ---------- derive computed fields from raw data ---------- */
+function enrich(a){
+  const lu = parseD(a.lastUpdated);
+  const due = parseD(a.dueDate);
+  const pwAge = lu ? Math.round((today() - lu) / MS_DAY) : null;
+  const pwStatus = pwAge == null ? null : pwAge >= 180 ? "bad" : pwAge >= 90 ? "warn" : "ok";
+  const monthly = (a.amount == null || !a.plan) ? null :
+      a.plan === "Monthly" ? a.amount :
+      a.plan === "Quarterly" ? a.amount / 3 :
+      a.plan === "Yearly" ? a.amount / 12 : 0;
+  const dtp = daysFromToday(due);
+  const cancelled = a.payStatus === "🚫 Cancelled";
+  let payState = "none", payLabel = "—";
+  if (due && !cancelled){
+    if (dtp < 0){ payState = "overdue"; payLabel = "🔴 Overdue by " + Math.abs(dtp) + "d"; }
+    else if (dtp === 0){ payState = "overdue"; payLabel = "🔴 Due today"; }
+    else if (dtp <= 7){ payState = "soon"; payLabel = "🟡 Due in " + dtp + "d"; }
+    else { payState = "ok"; payLabel = "🟢 " + dtp + "d to go"; }
+  } else if (cancelled){ payLabel = "🚫 Cancelled"; }
+  return {...a, pwAge, pwStatus, monthly, daysToPay: dtp, cancelled, payState, payLabel, due};
+}
+
+/* ---------- KPI rendering ---------- */
+function kpiCard(cls, label, value, sub){
+  return `<div class="kpi ${cls}"><div class="label">${label}</div><div class="value">${value}</div>${sub?`<div class="sub">${sub}</div>`:""}</div>`;
+}
+
+function renderKPIs(){
+  const active = rows.filter(r => !r.cancelled);
+  const monthlySpend = active.reduce((s,r)=> s + (r.monthly||0), 0);
+  const activeSubs = active.filter(r => r.plan && r.plan !== "Free" && r.plan !== "One-time").length;
+  const overdue = active.filter(r => r.due && r.daysToPay <= 0).length;
+  const due7 = active.filter(r => r.due && r.daysToPay > 0 && r.daysToPay <= 7).length;
+  const unpaid = rows.filter(r => r.payStatus === "⌛ Unpaid").length;
+  const hi = rows.filter(r => r.priority === "🔥 High").length;
+
+  document.getElementById("kpiMoney").innerHTML =
+    kpiCard("", "💸 Monthly spend", peso(monthlySpend), activeSubs + " active subscriptions") +
+    kpiCard("", "📅 Yearly spend (est.)", peso(monthlySpend*12), "based on current monthly total") +
+    kpiCard("", "Active subscriptions", activeSubs, "paid plans, not cancelled") +
+    kpiCard(overdue ? "bad" : "ok", "🔴 Overdue payments", overdue, overdue ? "settle these first" : "all caught up") +
+    kpiCard(due7 ? "warn" : "", "🟡 Due in 7 days", due7, "review upcoming charges") +
+    kpiCard("", "🔥 High priority accounts", hi, "flagged priority") +
+    kpiCard(unpaid ? "warn" : "ok", "⌛ Marked unpaid", unpaid, unpaid ? "settle in sheet" : "all settled") +
+    kpiCard("", "Total accounts", rows.length, "across all categories");
+}
+
+/* ---------- payment horizon ---------- */
+function renderHorizon(){
+  const track = document.getElementById("track");
+  track.querySelectorAll(".tick").forEach(t=>t.remove());
+  const upcoming = rows
+    .filter(r => r.due && !r.cancelled)
+    .sort((a,b) => a.daysToPay - b.daysToPay);
+  const in30 = upcoming.filter(r => r.daysToPay >= 0 && r.daysToPay <= 30);
+  const total30 = in30.reduce((s,r)=> s + (r.amount||0), 0);
+  document.getElementById("horizonTotal").textContent =
+    in30.length ? in30.length + " payment(s) · " + peso(total30) + " falling due" : "no payments in the next 30 days";
+
+  in30.forEach(r=>{
+    const t = document.createElement("div");
+    t.className = "tick " + (r.daysToPay <= 0 ? "bad" : r.daysToPay <= 7 ? "warn" : "ok");
+    t.style.left = (r.daysToPay / 30 * 100) + "%";
+    t.tabIndex = 0;
+    t.innerHTML = `<span class="tip"><b>${esc(r.name)}</b> · <span class="amt">${r.amount!=null?peso(r.amount):"—"}</span> · ${r.daysToPay<=0?"due now":"in "+r.daysToPay+"d"}</span>`;
+    track.appendChild(t);
+  });
+
+  document.getElementById("payList").innerHTML = upcoming.slice(0,8).map(r=>{
+    const cls = r.daysToPay <= 0 ? "bad" : r.daysToPay <= 7 ? "warn" : "ok";
+    const d = r.daysToPay < 0 ? Math.abs(r.daysToPay)+"d late" : r.daysToPay === 0 ? "today" : r.daysToPay+"d";
+    return `<div class="pay-chip"><span class="d ${cls}">${d}</span><span class="who">${esc(r.name)}</span><span class="amt">${r.amount!=null?peso(r.amount):""}</span></div>`;
+  }).join("") || `<span style="color:var(--muted)">Nothing scheduled — add a Next Due Date on the sheet to see it here.</span>`;
+}
+
+/* ---------- vault table ---------- */
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function chip(text){
+  if(!text) return `<span class="chip mut">—</span>`;
+  const cls = /🟢|✅/.test(text) ? "ok" : /🟡|⭐|⌛/.test(text) ? "warn" : /🔴|❌|♻️|🚫/.test(text) ? "bad" : /🔥/.test(text) ? "gold" : "mut";
+  return `<span class="chip ${cls}">${esc(text)}</span>`;
+}
+
+function renderTable(){
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const cat = document.getElementById("fCat").value;
+  const prio = document.getElementById("fPrio").value;
+  const alertF = document.getElementById("fAlert").value;
+
+  const filtered = rows.filter(r=>{
+    if (cat && r.category !== cat) return false;
+    if (prio && r.priority !== prio) return false;
+    if (alertF && r.payState !== alertF) return false;
+    if (q){
+      const hay = [r.name,r.username,r.url,r.notes,r.category].join(" ").toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById("rowCount").textContent = filtered.length + " of " + rows.length + " accounts";
+  const tbody = document.getElementById("tbody");
+  const empty = document.getElementById("empty");
+  const table = document.getElementById("vaultTable");
+  table.classList.remove("hidden");
+  empty.classList.toggle("hidden", filtered.length > 0);
+
+  tbody.innerHTML = filtered.map((r,i)=>{
+    const hintShown = revealAll || r._show;
+    return `<tr>
+      <td><div class="svc">${esc(r.name)}</div><div class="cat">${esc(r.category)}</div></td>
+      <td>${chip(r.priority)}</td>
+      <td class="usr">${esc(r.username) || "—"}</td>
+      <td><div class="hint-cell"><span class="val">${hintShown ? esc(r.hint||"—") : "••••••••"}</span>
+        <button class="eye" data-i="${i}" aria-label="${hintShown?"Hide":"Show"} hint">${hintShown?"🙈":"👁"}</button></div></td>
+      <td class="mono">${esc(r.plan)||"—"}</td>
+      <td>${chip(r.payStatus)}</td>
+      <td class="mono">${r.amount!=null?peso(r.amount):"—"}${r.monthly&&r.plan!=="Monthly"?`<div class="cat">${peso(r.monthly)}/mo</div>`:""}</td>
+      <td class="mono">${r.due ? r.due.toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"}) : "—"}</td>
+      <td>${chip(r.payLabel==="—"?"":r.payLabel)}</td>
+      <td class="mono">${r.url ? `<a href="https://${esc(r.url.replace(/^https?:\/\//,""))}" target="_blank" rel="noopener">${esc(r.url)}</a>` : "—"}</td>
+    </tr>`;
+  }).join("");
+
+  tbody.querySelectorAll(".eye").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      const r = filtered[Number(b.dataset.i)];
+      r._show = !r._show;
+      renderTable();
+    });
+  });
+}
+
+/* ---------- data loading ---------- */
+async function load(){
+  const loading = document.getElementById("loading");
+  const errN = document.getElementById("errorNotice");
+  errN.classList.add("hidden");
+  loading.classList.remove("hidden");
+  document.getElementById("vaultTable").classList.add("hidden");
+  document.getElementById("empty").classList.add("hidden");
+
+  try{
+    const res = await fetch(`${WEB_APP_URL}?token=${encodeURIComponent(API_TOKEN)}`);
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "The API returned an error.");
+    document.getElementById("stamp").textContent = "synced " + new Date().toLocaleTimeString("en-PH",{hour:"numeric",minute:"2-digit"});
+    rows = json.accounts.map(enrich);
+    document.getElementById("asOf").textContent = new Date().toLocaleDateString("en-PH",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
+
+    // populate category filter
+    const sel = document.getElementById("fCat");
+    const current = sel.value;
+    sel.innerHTML = `<option value="">All categories</option>` +
+      [...new Set(rows.map(r=>r.category).filter(Boolean))].sort().map(c=>`<option${c===current?" selected":""}>${esc(c)}</option>`).join("");
+
+    renderKPIs();
+    renderHorizon();
+    renderTable();
+  } catch(err){
+    errN.textContent = "Couldn't fetch the vault: " + err.message +
+      " — check that the Web app is deployed (access: Anyone), the URL ends in /exec, and the token matches Code.gs.";
+    errN.classList.remove("hidden");
+  } finally {
+    loading.classList.add("hidden");
+  }
+}
+
+/* ---------- events ---------- */
+["q","fCat","fPrio","fAlert"].forEach(id =>
+  document.getElementById(id).addEventListener("input", renderTable));
+document.getElementById("clearBtn").addEventListener("click", ()=>{
+  ["q","fCat","fPrio","fAlert"].forEach(id => document.getElementById(id).value = "");
+  renderTable();
+});
+document.getElementById("refreshBtn").addEventListener("click", load);
+
+/* ---------- theme toggle ---------- */
+const themeBtn = document.getElementById("themeToggle");
+function applyTheme(mode){
+  document.documentElement.setAttribute("data-theme", mode);
+  themeBtn.setAttribute("aria-pressed", String(mode === "light"));
+  localStorage.setItem("vault-theme", mode);
+}
+applyTheme(localStorage.getItem("vault-theme") === "light" ? "light" : "dark");
+themeBtn.addEventListener("click", ()=>{
+  applyTheme(document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light");
+});
+
+/* ---------- login gate ---------- */
+const LOGIN_USER = "joyceannyap8@gmail.com";
+const LOGIN_PASS = "Vaultcodes123";
+const loginGate = document.getElementById("loginGate");
+const appShell = document.getElementById("appShell");
+const loginError = document.getElementById("loginError");
+
+function enterApp(){
+  loginGate.classList.add("hidden");
+  appShell.classList.remove("hidden");
+  load();
+}
+
+if (localStorage.getItem("vault-auth") === "1"){
+  enterApp();
+}
+
+document.getElementById("loginForm").addEventListener("submit", (e)=>{
+  e.preventDefault();
+  const user = document.getElementById("loginUser").value.trim().toLowerCase();
+  const pass = document.getElementById("loginPass").value;
+  if (user === LOGIN_USER && pass === LOGIN_PASS){
+    localStorage.setItem("vault-auth", "1");
+    loginError.classList.add("hidden");
+    enterApp();
+  } else {
+    loginError.classList.remove("hidden");
+  }
+});
+</script>
+</body>
+</html>
